@@ -2,6 +2,7 @@ package esw.sm.api.protocol
 
 import csw.location.api.models.ComponentId
 import esw.ocs.api.models.ObsMode
+import esw.ocs.api.protocol.SequenceComponentResponse
 import esw.sm.api.codecs.SmAkkaSerializable
 
 private[protocol] sealed trait SmFailure extends Throwable
@@ -23,6 +24,14 @@ sealed trait GetRunningObsModesResponse extends SmResponse
 object GetRunningObsModesResponse {
   case class Success(runningObsModes: Set[ObsMode]) extends GetRunningObsModesResponse
   case class Failed(msg: String)                    extends SmFailure with GetRunningObsModesResponse
+}
+
+sealed trait GetSequenceComponentsStatusResponse extends SmResponse
+
+object GetSequenceComponentsStatusResponse {
+  case class Success(statuses: Map[ComponentId, SequenceComponentResponse.GetStatusResponse])
+      extends GetSequenceComponentsStatusResponse
+  case class Failed(msg: String) extends SmFailure with GetSequenceComponentsStatusResponse
 }
 
 sealed trait StartSequencerResponse extends SmResponse

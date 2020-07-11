@@ -1,8 +1,8 @@
 package esw.sm.impl.core
-
+import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
-import csw.location.api.models.ComponentType.Sequencer
+import csw.location.api.models.ComponentType.{SequenceComponent, Sequencer}
 import csw.location.api.models.Connection.HttpConnection
 import csw.location.api.models.{AkkaLocation, ComponentId}
 import csw.prefix.models.Subsystem.ESW
@@ -10,6 +10,7 @@ import csw.prefix.models.{Prefix, Subsystem}
 import esw.commons.extensions.FutureEitherExt.FutureEitherOps
 import esw.commons.utils.location.EswLocationError.RegistrationListingFailed
 import esw.commons.utils.location.LocationServiceUtil
+import esw.ocs.api.actor.messages.SequenceComponentMsg
 import esw.ocs.api.models.ObsMode
 import esw.sm.api.SequenceManagerState
 import esw.sm.api.SequenceManagerState._
@@ -21,9 +22,14 @@ import esw.sm.api.protocol.StartSequencerResponse.AlreadyRunning
 import esw.sm.api.protocol._
 import esw.sm.impl.config.{ObsModeConfig, Resources, SequenceManagerConfig}
 import esw.sm.impl.utils.{SequenceComponentUtil, SequencerUtil}
+import csw.location.api.extensions.URIExtension.RichURI
+import esw.ocs.api.actor.client.SequenceComponentApiTimeout
+import esw.ocs.api.actor.messages.SequenceComponentMsg.GetStatus
+import esw.ocs.api.protocol.SequenceComponentResponse
+import scala.concurrent.duration.DurationLong
 
 import scala.async.Async.{async, await}
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 
 class SequenceManagerBehavior(
@@ -152,9 +158,31 @@ class SequenceManagerBehavior(
 
   private def handleCommon(msg: CommonMessage, currentState: SequenceManagerState): Unit =
     msg match {
-      case GetRunningObsModes(replyTo)      => runningObsModesResponse.foreach(replyTo ! _)
-      case GetSequenceManagerState(replyTo) => replyTo ! currentState
+      case GetRunningObsModes(replyTo)          => runningObsModesResponse.foreach(replyTo ! _)
+      case GetSequenceManagerState(replyTo)     => replyTo ! currentState
+      case GetSequenceComponentsStatus(replyTo) => replyTo ! getComponentsStatus
     }
+
+  private def getComponentsStatus: GetSequenceComponentsStatusResponse = {
+    val future = locationServiceUtil
+      .listAkkaLocationsBy(SequenceComponent)
+      .mapRight(_.map { (location: AkkaLocation) =>
+        location.connection.componentId -> location.uri.toActorRef.unsafeUpcast[SequenceComponentMsg]
+      }.toMap)
+      .mapRight(entrySet =>
+        entrySet
+          .map(entry => {
+            val eventualResponse = (entry._2 ? GetStatus) (SequenceComponentApiTimeout.StatusTimeout, actorSystem.scheduler)
+            entry._1 -> eventualResponse
+          })
+          .map { entrySet => entrySet._1 -> Await.result(entrySet._2, 2.seconds) }
+      )
+    val value: Either[RegistrationListingFailed, Map[ComponentId, SequenceComponentResponse.GetStatusResponse]] = Await.result(future, 2.seconds)
+    value match {
+      case Left(_) => GetSequenceComponentsStatusResponse.Failed("No sequence components found")
+      case Right(value) => GetSequenceComponentsStatusResponse.Success(value)
+    }
+  }
 
   private def runningObsModesResponse =
     getRunningObsModes.mapToAdt(

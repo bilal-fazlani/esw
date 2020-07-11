@@ -5,6 +5,8 @@ import csw.location.api.models.ComponentType.{SequenceComponent, Sequencer}
 import csw.prefix.models.Prefix
 import csw.prefix.models.Subsystem.{ESW, TCS}
 import esw.ocs.api.models.ObsMode
+import esw.ocs.api.protocol.SequenceComponentResponse
+import esw.sm.api.SequenceManagerState.Idle
 import esw.sm.api.codecs.SequenceManagerHttpCodec
 import esw.sm.api.protocol.SequenceManagerPostRequest.{GetRunningObsModes, _}
 import esw.sm.api.protocol.ShutdownSequenceComponentsPolicy.{AllSequenceComponents, SingleSequenceComponent}
@@ -160,5 +162,22 @@ class SequenceManagerClientTest extends BaseTestSuite with SequenceManagerHttpCo
 
       client.spawnSequenceComponent(agent, seqCompName).futureValue shouldBe SpawnSequenceComponentResponse.Success(seqComp)
     }
+
+    "return spawn sequence component success response for spawnSequenceComponent request | ESW-33711" in {
+      val seqCompName          = "seq_comp"
+      val agent: Prefix        = Prefix(TCS, "primary")
+      val seqComp: ComponentId = ComponentId(Prefix(TCS, seqCompName), SequenceComponent)
+
+      val map = Map(seqComp -> SequenceComponentResponse.GetStatusResponse(None))
+      when(
+        postClient.requestResponse[GetSequenceComponentsStatusResponse](argsEq(GetSequenceComponentsStatus))(
+          any[Decoder[GetSequenceComponentsStatusResponse]](),
+          any[Encoder[GetSequenceComponentsStatusResponse]]()
+        )
+      ).thenReturn(Future.successful(GetSequenceComponentsStatusResponse.Success(map)))
+
+      client.getAllSequenceComponentStatus.futureValue shouldBe GetSequenceComponentsStatusResponse.Success(map)
+    }
+
   }
 }

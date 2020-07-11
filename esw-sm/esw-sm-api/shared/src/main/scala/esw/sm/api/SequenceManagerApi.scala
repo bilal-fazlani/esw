@@ -1,7 +1,8 @@
 package esw.sm.api
 
+import csw.location.api.models.ComponentId
 import csw.prefix.models.{Prefix, Subsystem}
-import esw.ocs.api.models.ObsMode
+import esw.ocs.api.models.{ObsMode, SequenceComponentState}
 import esw.sm.api.protocol._
 
 import scala.concurrent.Future
@@ -23,4 +24,6 @@ trait SequenceManagerApi {
   def shutdownSequenceComponent(prefix: Prefix): Future[ShutdownSequenceComponentResponse]
   def shutdownAllSequenceComponents(): Future[ShutdownSequenceComponentResponse]
   private[sm] def shutdownSequenceComponents(policy: ShutdownSequenceComponentsPolicy): Future[ShutdownSequenceComponentResponse]
+  def getAllSequenceComponentStatus: Future[GetSequenceComponentsStatusResponse]
+
 }

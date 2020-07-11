@@ -24,6 +24,7 @@ class SequenceManagerPostHandler(sequenceManager: SequenceManagerApi, securityDi
       case ShutdownSequencers(policy)            => sPost(complete(shutdownSequencers(policy)))
       case SpawnSequenceComponent(machine, name) => sPost(complete(spawnSequenceComponent(machine, name)))
       case ShutdownSequenceComponents(policy)    => sPost(complete(shutdownSequenceComponents(policy)))
+      case GetSequenceComponentsStatus           => sPost(complete(getAllSequenceComponentStatus))
     }
 
   def sPost(route: => Route): Route = securityDirectives.sPost(EswUserRolePolicy())(_ => route)

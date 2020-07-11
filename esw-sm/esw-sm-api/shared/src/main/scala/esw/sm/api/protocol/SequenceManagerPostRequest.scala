@@ -16,4 +16,5 @@ object SequenceManagerPostRequest {
 
   case class SpawnSequenceComponent(machine: Prefix, name: String)                extends SequenceManagerPostRequest
   case class ShutdownSequenceComponents(policy: ShutdownSequenceComponentsPolicy) extends SequenceManagerPostRequest
+  case object GetSequenceComponentsStatus extends SequenceManagerPostRequest
 }

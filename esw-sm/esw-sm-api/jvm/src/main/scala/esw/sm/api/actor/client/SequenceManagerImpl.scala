@@ -4,11 +4,11 @@ import akka.actor.typed.scaladsl.AskPattern._
 import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.util.Timeout
 import csw.location.api.extensions.URIExtension.RichURI
-import csw.location.api.models.AkkaLocation
+import csw.location.api.models.{AkkaLocation, ComponentId}
 import csw.prefix.models.{Prefix, Subsystem}
 import esw.commons.Timeouts
 import esw.ocs.api.actor.client.SequenceComponentApiTimeout
-import esw.ocs.api.models.ObsMode
+import esw.ocs.api.models.{ObsMode, SequenceComponentState}
 import esw.sm.api.SequenceManagerApi
 import esw.sm.api.actor.messages.SequenceManagerMsg
 import esw.sm.api.actor.messages.SequenceManagerMsg._
@@ -68,6 +68,8 @@ class SequenceManagerImpl(location: AkkaLocation)(implicit actorSystem: ActorSys
       policy: ShutdownSequenceComponentsPolicy
   ): Future[ShutdownSequenceComponentResponse] =
     smRef ? (ShutdownSequenceComponents(policy, _))
+
+  override def getAllSequenceComponentStatus: Future[GetSequenceComponentsStatusResponse] = smRef ? GetSequenceComponentsStatus
 }
 
 object SequenceManagerTimeout {
