@@ -135,4 +135,26 @@ class SequenceComponentUtil(locationServiceUtil: LocationServiceUtil, agentUtil:
 
   private[sm] def createSequenceComponentImpl(sequenceComponentLocation: AkkaLocation): SequenceComponentApi =
     new SequenceComponentImpl(sequenceComponentLocation)
+
+  // eswSeqComp1 --> Oprion[darknight]
+  // eswSeqComp2 --> location service error
+  // eswSeqComp3 --> location service error
+  // eswSeqComp4 --> oprion[clearskes]
+  // Either[List[LocationServiceError, ], Map[eswSeqComp1 -> Oprion[Darknight], seqComp2 -> optipn[clearskei]]
+  def getSequencerComponents(seqCompIds: List[ComponentId]): Future[List[Any]] = {
+    val future =
+      Future.traverse(seqCompIds)(seqCompId =>
+        locationServiceUtil
+          .find(AkkaConnection(seqCompId))
+          .flatMap {
+            case Left(value)     => Future.successful(())
+            case Right(location) => createSequenceComponentImpl(location).status.map(s => seqCompId -> s.response)
+          }
+      )
+    future
+//      await(ss)
+//        .map(x => {
+//          SequenceComponentStatus(x._1, if (x._2.isEmpty) None else Some(x._2.get.connection.componentId))
+//        })
+  }
 }
